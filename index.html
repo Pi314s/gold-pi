@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The World of Pi | BRC-20</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons (Lucide) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Charts (Chart.js) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Tailwind Config -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            },
+            colors: {
+              primary: {
+                DEFAULT: '#6c5ce7',
+                hover: '#5a4bd1',
+              },
+              accent: {
+                green: '#00ff9d',
+                gold: '#FFD700',
+              },
+              dark: {
+                bg: '#050507',
+                card: '#0f0f13',
+                border: 'rgba(255, 255, 255, 0.08)'
+              }
+            },
+            animation: {
+              'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            }
+          }
+        }
+      }
+    </script>
+
+    <style>
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar { width: 6px; }
+      ::-webkit-scrollbar-track { background: #050507; }
+      ::-webkit-scrollbar-thumb { background: #333; border-radius: 0px; }
+      ::-webkit-scrollbar-thumb:hover { background: #6c5ce7; }
+      
+      body {
+        background-color: #050507;
+        color: #e5e7eb;
+        overflow-x: hidden;
+      }
+
+      /* Noise Texture */
+      .bg-noise {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        pointer-events: none; z-index: 50; opacity: 0.03;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E");
+      }
+
+      /* CRT Scanlines */
+      .scanlines {
+        background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
+        background-size: 100% 4px;
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        pointer-events: none; z-index: 51; opacity: 0.3;
+      }
+      
+      /* Glitch Animation */
+      @keyframes glitch {
+        0% { text-shadow: 2px 0 #D4AF37, -2px 0 #FFFFFF; transform: translate(0); }
+        10% { text-shadow: 2px 0 #D4AF37, -2px 0 #FFFFFF; transform: translate(-1px, -1px); }
+        20% { text-shadow: -2px 0 #FFD700, 2px 0 #FFF8DC; transform: translate(1px, 1px); }
+        30% { text-shadow: 2px 0 #FFFFFF, -2px 0 #D4AF37; transform: translate(-1px, 0); }
+        40% { text-shadow: -2px 0 #FFD700, 2px 0 #FFF8DC; transform: translate(1px, 1px); }
+        50% { text-shadow: 2px 0 #D4AF37, -2px 0 #FFFFFF; transform: translate(0); }
+        100% { text-shadow: 0 0 0 rgba(0, 0, 0, 0); transform: translate(0); }
+      }
+      .glitch-text { animation: glitch 3s infinite alternate-reverse; }
+
+      /* Retro Grid Floor */
+      .retro-grid {
+        background-image: linear-gradient(to right, #4b5563 1px, transparent 1px), linear-gradient(to bottom, #4b5563 1px, transparent 1px);
+        background-size: 4rem 4rem;
+        transform: perspective(500px) rotateX(60deg) translateY(-100px) scale(2);
+        transform-origin: top center;
+      }
+
+      /* Scroll Reveal Classes */
+      .reveal { opacity: 0; transform: translateY(30px); transition: all 1s cubic-bezier(0.2, 0.8, 0.2, 1); }
+      .reveal.active { opacity: 1; transform: translateY(0); }
+      .delay-100 { transition-delay: 100ms; }
+      .delay-200 { transition-delay: 200ms; }
+      .delay-300 { transition-delay: 300ms; }
+
+      /* 3D Tilt Card Base */
+      .tilt-card {
+        transform-style: preserve-3d;
+        will-change: transform;
+      }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
+    "recharts": "https://aistudiocdn.com/recharts@^3.5.1",
+    "vite": "https://aistudiocdn.com/vite@^7.2.6",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="antialiased selection:bg-primary selection:text-white">
+
+    <!-- Overlays -->
+    <div class="bg-noise"></div>
+    <div class="scanlines"></div>
+
+    <!-- Background Canvas -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div class="absolute inset-0 bg-dark-bg"></div>
+        <div class="absolute inset-0 opacity-[0.05] retro-grid h-[200%]"></div>
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#050507_90%)]"></div>
+        <canvas id="bgCanvas" class="absolute inset-0 w-full h-full"></canvas>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="sticky top-0 z-50 w-full border-b border-white/5 bg-dark-bg/80 backdrop-blur-xl">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                <div class="flex-shrink-0 cursor-pointer group" onclick="window.scrollTo({ top: 0, behavior: 'smooth' })">
+                    <div class="flex items-center gap-2">
+                        <span class="text-4xl text-primary group-hover:scale-110 transition-transform duration-300 font-serif glitch-text">𝛑</span>
+                        <span class="text-xl font-bold tracking-tight text-white/90 hidden sm:block">World of Pi</span>
+                    </div>
+                </div>
+                <!-- Desktop Menu -->
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-8">
+                        <a href="#token-info" class="text-gray-300 hover:text-white hover:bg-white/5 px-3 py-2 rounded-md text-sm font-medium transition-all">About 𝛑</a>
+                        <a href="#trade" class="text-gray-300 hover:text-white hover:bg-white/5 px-3 py-2 rounded-md text-sm font-medium transition-all">Exchange</a>
+                        <a href="#ecosystem" class="text-gray-300 hover:text-white hover:bg-white/5 px-3 py-2 rounded-md text-sm font-medium transition-all">Ecosystem</a>
+                        <a href="#statistics" class="text-gray-300 hover:text-white hover:bg-white/5 px-3 py-2 rounded-md text-sm font-medium transition-all">Holders</a>
+                        <a href="https://unisat.io/brc20/%F0%9D%9B%91" target="_blank" class="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-[0_0_15px_rgba(108,92,231,0.4)] hover:shadow-[0_0_25px_rgba(108,92,231,0.6)] flex items-center gap-2">
+                            Buy on UniSat <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                        </a>
+                    </div>
+                </div>
+                <!-- Mobile Menu Button -->
+                <div class="md:hidden">
+                    <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" class="text-gray-400 hover:text-white p-2">
+                        <i data-lucide="menu"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden md:hidden bg-dark-card border-b border-white/5">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                <a href="#token-info" class="block px-3 py-2 text-gray-300 hover:text-white">About 𝛑</a>
+                <a href="#trade" class="block px-3 py-2 text-gray-300 hover:text-white">Exchange</a>
+                <a href="#ecosystem" class="block px-3 py-2 text-gray-300 hover:text-white">Ecosystem</a>
+                <a href="https://unisat.io/brc20/%F0%9D%9B%91" target="_blank" class="block mt-4 bg-primary text-center px-3 py-3 rounded text-white font-bold">Buy on UniSat</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="relative z-10">
+        
+        <!-- Hero Section -->
+        <div class="relative pt-32 pb-24 md:pt-48 md:pb-32 overflow-hidden min-h-[90vh] flex flex-col justify-center">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full text-center">
+                
+                <div class="reveal">
+                    <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/30 bg-primary/10 text-xs font-mono font-bold text-primary mb-8 backdrop-blur-sm tracking-widest uppercase shadow-[0_0_20px_rgba(108,92,231,0.2)]">
+                        <i data-lucide="zap" class="w-3 h-3 fill-primary animate-pulse"></i> BRC-20 Standard Protocol
+                    </div>
+                </div>
+                
+                <div class="reveal delay-100">
+                    <h1 class="text-7xl md:text-[10rem] font-bold text-white mb-6 tracking-tighter leading-[0.9] mix-blend-screen relative z-10">
+                        WORLD <br class="md:hidden" /> OF 
+                        <span class="text-transparent bg-clip-text bg-gradient-to-b from-[#FFD700] to-[#B8860B] glitch-text relative inline-block" style="text-shadow: 0 0 50px rgba(255, 215, 0, 0.4)">
+                            𝛑
+                        </span>
+                    </h1>
+                </div>
+
+                <p class="reveal delay-200 text-lg md:text-xl text-gray-400 max-w-2xl mx-auto mb-12 font-mono leading-relaxed">
+                    The original math-based token on Bitcoin. <br/>
+                    <span class="text-white font-medium">Fair Launch. Immutable. Decentralized.</span>
+                </p>
+
+                <div class="reveal delay-300 flex flex-col sm:flex-row gap-4 justify-center w-full sm:w-auto">
+                    <a href="#trade" class="group relative px-8 py-4 bg-white text-black text-center font-bold font-mono text-sm uppercase tracking-wider overflow-hidden rounded hover:shadow-[0_0_30px_rgba(255,255,255,0.3)] transition-all duration-300">
+                        <div class="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/20 to-primary/0 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700"></div>
+                        <span class="relative z-10 flex items-center justify-center gap-2">Initialize Trade <i data-lucide="arrow-right" class="w-4 h-4"></i></span>
+                    </a>
+                    <a href="#ecosystem" class="px-8 py-4 bg-transparent border border-white/20 text-white text-center font-bold font-mono text-sm uppercase tracking-wider hover:border-white hover:bg-white/5 transition-all rounded hover:shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                        System Links
+                    </a>
+                </div>
+
+                <!-- Ticker -->
+                <div class="reveal delay-300 mt-24 w-full max-w-5xl mx-auto border-y border-white/10 bg-black/40 backdrop-blur-md">
+                    <div class="grid grid-cols-2 md:grid-cols-4 divide-x divide-white/10">
+                        <div class="p-5 flex flex-col items-center group cursor-default hover:bg-white/5 transition-colors">
+                            <span class="text-[10px] text-gray-500 font-mono uppercase tracking-widest mb-1 group-hover:text-primary transition-colors">Price</span>
+                            <span class="text-xl font-mono font-bold text-white">0.00023 <span class="text-sm text-gray-500">SATS</span></span>
+                        </div>
+                        <div class="p-5 flex flex-col items-center group cursor-default hover:bg-white/5 transition-colors">
+                            <span class="text-[10px] text-gray-500 font-mono uppercase tracking-widest mb-1 group-hover:text-primary transition-colors">Market Cap</span>
+                            <span class="text-xl font-mono font-bold text-white">$2.4M+</span>
+                        </div>
+                        <div class="p-5 flex flex-col items-center group cursor-default hover:bg-white/5 transition-colors">
+                            <span class="text-[10px] text-gray-500 font-mono uppercase tracking-widest mb-1 group-hover:text-primary transition-colors">Holders</span>
+                            <span class="text-xl font-mono font-bold text-white">120,591</span>
+                        </div>
+                        <div class="p-5 flex flex-col items-center group cursor-default hover:bg-white/5 transition-colors">
+                            <span class="text-[10px] text-gray-500 font-mono uppercase tracking-widest mb-1 group-hover:text-primary transition-colors">Supply</span>
+                            <span class="text-xl font-mono font-bold text-white">3.14P</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Token Info Section -->
+        <section id="token-info" class="py-20 md:py-32 relative">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                <div class="flex items-center gap-4 mb-16 reveal">
+                    <div class="h-px w-8 bg-primary"></div>
+                    <h2 class="text-2xl md:text-4xl font-bold font-mono text-white tracking-tight uppercase">System Status</h2>
+                    <div class="h-px flex-1 bg-white/10"></div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Protocol Specs -->
+                    <div class="tilt-card bg-dark-card/80 backdrop-blur-sm border border-white/10 p-6 rounded-xl reveal delay-100">
+                        <div class="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
+                            <div class="text-primary p-2 bg-primary/10 rounded-lg"><i data-lucide="cpu" class="w-5 h-5"></i></div>
+                            <h3 class="text-lg font-bold font-mono text-gray-200 tracking-tight uppercase">Protocol Specs</h3>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex justify-between py-2 border-b border-white/5">
+                                <span class="text-gray-500 text-xs uppercase font-mono">Standard</span>
+                                <span class="text-white font-bold font-mono">BRC-20</span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-white/5">
+                                <span class="text-gray-500 text-xs uppercase font-mono">Mint State</span>
+                                <div class="text-right"><span class="text-gray-300 font-mono">Completed</span><br><span class="text-xs text-accent-green font-mono">100.00% Minted</span></div>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-white/5">
+                                <span class="text-gray-500 text-xs uppercase font-mono">Max Supply</span>
+                                <span class="text-gray-300 font-mono">3.14P</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Genesis Block -->
+                    <div class="tilt-card bg-dark-card/80 backdrop-blur-sm border border-white/10 p-6 rounded-xl reveal delay-200">
+                        <div class="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
+                            <div class="text-primary p-2 bg-primary/10 rounded-lg"><i data-lucide="terminal" class="w-5 h-5"></i></div>
+                            <h3 class="text-lg font-bold font-mono text-gray-200 tracking-tight uppercase">Genesis Block</h3>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex justify-between py-2 border-b border-white/5">
+                                <span class="text-gray-500 text-xs uppercase font-mono">Host Chain</span>
+                                <span class="text-white font-bold font-mono">Bitcoin</span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-white/5">
+                                <span class="text-gray-500 text-xs uppercase font-mono">Inscription ID</span>
+                                <a href="https://unisat.io/inscription/325bd996dbe371ad63393e893bd5efe95200b1490fe6574d395c3339551f2f93i0" target="_blank" class="text-gray-300 font-mono hover:text-primary transition-colors flex items-center gap-1">
+                                    325bd9...1f2f93i0 <i data-lucide="external-link" class="w-3 h-3"></i>
+                                </a>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-white/5">
+                                <span class="text-gray-500 text-xs uppercase font-mono">Deployer</span>
+                                <a href="https://unisat.io/address/bc1qjvjj5x6lzyvk70x96ldm7p5aks5tvnrnet6thp" target="_blank" class="text-gray-300 font-mono hover:text-primary transition-colors flex items-center gap-1">
+                                    bc1qjv...t6thp <i data-lucide="external-link" class="w-3 h-3"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Network Pulse -->
+                    <div class="tilt-card bg-dark-card/80 backdrop-blur-sm border border-white/10 p-6 rounded-xl reveal delay-300 flex flex-col">
+                        <div class="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
+                            <div class="text-primary p-2 bg-primary/10 rounded-lg"><i data-lucide="activity" class="w-5 h-5"></i></div>
+                            <h3 class="text-lg font-bold font-mono text-gray-200 tracking-tight uppercase">Network Pulse</h3>
+                        </div>
+                        
+                        <div class="flex items-center gap-3 mb-6 px-4 py-3 bg-accent-green/5 border border-accent-green/10 rounded-lg w-full">
+                            <div class="relative flex h-3 w-3">
+                              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-green opacity-75"></span>
+                              <span class="relative inline-flex rounded-full h-3 w-3 bg-accent-green shadow-[0_0_10px_#00ff9d]"></span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-xs font-mono font-bold text-accent-green uppercase tracking-wider leading-none mb-1">Status: Active</span>
+                                <span class="text-[10px] text-gray-400">All Systems Operational</span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-1 mb-6">
+                            <div class="flex justify-between py-2 border-b border-white/5">
+                                <span class="text-gray-500 text-xs uppercase font-mono">Total Holders</span>
+                                <span class="text-white font-bold font-mono">120,591</span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-white/5">
+                                <span class="text-gray-500 text-xs uppercase font-mono">Transactions</span>
+                                <span class="text-gray-300 font-mono">355,067+</span>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-auto grid grid-cols-2 gap-3">
+                            <a href="https://web3.okx.com/explorer/bitcoin/token/brc20/5496738?channelId=unisat" target="_blank" class="flex items-center justify-center gap-2 px-3 py-3 bg-white/5 hover:bg-white text-gray-300 hover:text-black font-mono text-xs font-bold uppercase rounded transition-all">
+                                OKX Scan <i data-lucide="external-link" class="w-3 h-3"></i>
+                            </a>
+                            <a href="https://unisat.io/brc20/%F0%9D%9B%91" target="_blank" class="flex items-center justify-center gap-2 px-3 py-3 border border-primary/50 text-primary hover:bg-primary hover:text-white font-mono text-xs font-bold uppercase rounded transition-all shadow-lg shadow-primary/20">
+                                Unisat <i data-lucide="external-link" class="w-3 h-3"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Holders Section -->
+        <section id="statistics" class="py-20 md:py-32 relative">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                <div class="flex items-center gap-4 mb-16 reveal">
+                    <div class="h-px w-8 bg-primary"></div>
+                    <h2 class="text-2xl md:text-4xl font-bold font-mono text-white tracking-tight uppercase">Network Distribution</h2>
+                    <div class="h-px flex-1 bg-white/10"></div>
+                </div>
+
+                <div class="flex flex-col lg:flex-row gap-8 reveal delay-100">
+                    <!-- Chart Side -->
+                    <div class="w-full lg:w-5/12 bg-dark-card/60 backdrop-blur-md rounded-2xl border border-dark-border p-6 flex flex-col h-fit">
+                        <h3 class="text-xl font-bold text-white mb-6 border-b border-white/5 pb-4">Holders Distribution</h3>
+                        <div class="h-[300px] w-full relative mb-6">
+                            <canvas id="holdersChart"></canvas>
+                            <!-- Center Text -->
+                            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                <span class="text-gray-400 text-sm font-medium mb-1">Others</span>
+                                <span class="text-white text-3xl font-bold tracking-tight">69%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Table Side -->
+                    <div class="w-full lg:w-7/12 bg-dark-card/60 backdrop-blur-md rounded-2xl border border-dark-border overflow-hidden flex flex-col h-fit">
+                        <div class="p-6 border-b border-white/5">
+                            <h3 class="text-xl font-bold text-white">Top Addresses</h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse" id="holdersTableBody">
+                                <thead>
+                                    <tr class="bg-white/5 text-gray-400 text-xs uppercase tracking-wider font-semibold">
+                                        <th class="px-6 py-4">#</th>
+                                        <th class="px-6 py-4">Address</th>
+                                        <th class="px-6 py-4 text-right">Ratio</th>
+                                        <th class="px-6 py-4 text-right">Value (sats)</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-white/5 text-sm font-mono text-gray-400">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Price Chart & Trading -->
+        <section id="trade" class="py-20 md:py-32 relative">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                <div class="flex items-center gap-4 mb-16 reveal">
+                    <div class="h-px w-8 bg-primary"></div>
+                    <h2 class="text-2xl md:text-4xl font-bold font-mono text-white tracking-tight uppercase">Market Terminal</h2>
+                    <div class="h-px flex-1 bg-white/10"></div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 reveal delay-100">
+                    <div class="lg:col-span-2 bg-[#0f0f13]/80 backdrop-blur-md rounded-xl border border-white/10 p-6 h-[500px] flex flex-col">
+                         <div class="flex justify-between items-end mb-6 pb-4 border-b border-white/5">
+                             <div>
+                                 <h3 class="text-sm font-mono font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                     <span class="w-2 h-2 bg-primary rounded-full animate-pulse"></span> Market / PI-BTC
+                                 </h3>
+                                 <div class="flex items-baseline gap-4">
+                                     <span class="text-4xl font-mono font-bold text-white">22,999 <span class="text-base text-gray-500 font-normal">SATS</span></span>
+                                     <span class="text-accent-green bg-accent-green/10 border border-accent-green/20 px-2 py-0.5 rounded text-sm font-bold font-mono">+12.5%</span>
+                                 </div>
+                             </div>
+                         </div>
+                         <div class="flex-1 relative w-full h-full min-h-0">
+                             <canvas id="priceChart"></canvas>
+                         </div>
+                    </div>
+
+                    <div class="flex flex-col gap-6">
+                        <div class="bg-[#0f0f13] border border-white/10 p-1 flex flex-col h-full relative group transition-all hover:border-white/20">
+                             <!-- Corner Accents -->
+                             <div class="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-primary/50"></div>
+                             <div class="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-primary/50"></div>
+                             <div class="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-primary/50"></div>
+                             <div class="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-primary/50"></div>
+                             
+                             <div class="bg-black/40 h-full p-8 flex flex-col justify-center text-center relative z-10 backdrop-blur-sm">
+                                <div class="w-16 h-16 mx-auto bg-primary/10 border border-primary/30 rounded-2xl flex items-center justify-center mb-6 text-primary shadow-[0_0_30px_rgba(108,92,231,0.2)]">
+                                    <i data-lucide="terminal" class="w-8 h-8"></i>
+                                </div>
+                                <h3 class="text-2xl font-bold font-mono text-white mb-2 uppercase">Execute Order</h3>
+                                <p class="text-gray-500 mb-8 font-mono text-xs">Route orders through decentralized Bitcoin layers.</p>
+                                
+                                <div class="space-y-4">
+                                    <a href="https://unisat.io/market/brc20?tick=%F0%9D%9B%91" target="_blank" class="w-full py-4 bg-[#f7931a] hover:bg-[#ffaa40] text-black font-bold font-mono uppercase tracking-wide transition-all shadow-[0_0_20px_rgba(247,147,26,0.3)] hover:shadow-[0_0_30px_rgba(247,147,26,0.5)] flex items-center justify-center gap-2 transform hover:-translate-y-1 rounded-sm">
+                                        Unisat Market <i data-lucide="external-link" class="w-4 h-4"></i>
+                                    </a>
+                                    <a href="https://www.superex.com/trade/%F0%9D%9B%91_USDT" target="_blank" class="w-full py-4 bg-primary hover:bg-primary-hover text-white font-bold font-mono uppercase tracking-wide transition-all shadow-[0_0_20px_rgba(108,92,231,0.3)] hover:shadow-[0_0_30px_rgba(108,92,231,0.5)] flex items-center justify-center gap-2 transform hover:-translate-y-1 rounded-sm">
+                                        SuperEX Exchange <i data-lucide="external-link" class="w-4 h-4"></i>
+                                    </a>
+                                </div>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Balance Checker -->
+        <section id="balance-checker" class="py-20 md:py-32 relative">
+            <div class="max-w-4xl mx-auto px-4 relative z-10 reveal">
+                <div class="relative bg-dark-card border border-dark-border rounded-xl p-8 md:p-12 text-center overflow-hidden group">
+                     <div class="absolute -top-10 -right-10 opacity-[0.03] pointer-events-none transform rotate-12 transition-transform duration-700 group-hover:rotate-0 group-hover:scale-110">
+                        <i data-lucide="wallet" class="w-64 h-64"></i>
+                    </div>
+                    <div class="relative z-10">
+                        <h3 class="text-2xl md:text-3xl font-bold text-white mb-3">Check Your 𝛑 Balance</h3>
+                        <p class="text-gray-400 mb-8 max-w-lg mx-auto">Verify your holdings directly on Unisat by entering your Bitcoin wallet address below.</p>
+                        
+                        <form onsubmit="checkBalance(event)" class="flex flex-col md:flex-row gap-4 max-w-xl mx-auto">
+                            <div class="relative flex-grow">
+                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <i data-lucide="search" class="text-gray-500 w-5 h-5"></i>
+                                </div>
+                                <input id="btcAddress" type="text" class="block w-full pl-11 pr-4 py-4 border border-dark-border rounded-xl bg-dark-bg/80 text-gray-100 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/50 transition-all" placeholder="Enter your BTC address (bc1...)">
+                            </div>
+                            <button type="submit" class="px-8 py-4 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(108,92,231,0.3)] hover:shadow-[0_0_30px_rgba(108,92,231,0.5)]">Check Now</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Ecosystem -->
+        <section id="ecosystem" class="py-20 md:py-32 relative">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                <div class="flex items-center gap-4 mb-16 reveal">
+                    <div class="h-px w-8 bg-primary"></div>
+                    <h2 class="text-2xl md:text-4xl font-bold font-mono text-white tracking-tight uppercase">Ecosystem Uplink</h2>
+                    <div class="h-px flex-1 bg-white/10"></div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="ecosystemGrid">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-[#050507] border-t border-white/5 py-12 relative z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-8">
+                <div class="flex flex-col items-center md:items-start gap-2">
+                    <span class="text-2xl font-bold font-mono text-white tracking-widest">WORLD_OF_PI</span>
+                    <p class="text-gray-600 text-xs font-mono">BRC-20 PROTOCOL // ID: 325bd9...</p>
+                </div>
+                <div class="flex gap-6">
+                    <a href="https://x.com/pi3141s" target="_blank" class="text-gray-500 hover:text-white transition-all"><i data-lucide="twitter"></i></a>
+                    <a href="https://t.me/brc20picoin" target="_blank" class="text-gray-500 hover:text-blue-400 transition-all"><i data-lucide="send"></i></a>
+                </div>
+            </div>
+            <div class="mt-12 text-center border-t border-white/5 pt-8">
+                <p class="text-[10px] text-gray-700 font-mono uppercase tracking-widest">Decentralized • Immutable • Math-Based</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // --- 1. Init Icons ---
+        lucide.createIcons();
+
+        // --- 2. Data ---
+        const HOLDERS_DATA = [
+            { rank: 1, address: "bc1p0s...w7fg9nqk6jsmsdnmg", percentage: "2.01%", value: "63,094,975,460,872" },
+            { rank: 2, address: "bc1pag...rps34treuv9ssnwuh73", percentage: "1.25%", value: "39,217,088,151,975" },
+            { rank: 3, address: "bc1p8h...p706prkj76fqae0afy", percentage: "1.11%", value: "34,793,172,982,982" },
+            { rank: 4, address: "bc1pcc...adqd68uvyjdqny3lhr", percentage: "0.97%", value: "30,422,175,550,787" },
+            { rank: 5, address: "bc1pgg...m0zl0v0s82uqnaaygm", percentage: "0.52%", value: "16,445,000,000,000" },
+            { rank: 6, address: "bc1qvc...n93v2yyt68hjk8xphr", percentage: "0.40%", value: "12,591,497,210,527" },
+            { rank: 7, address: "bc1p92...xr8wdkxchn7sskfnhz", percentage: "0.37%", value: "11,600,000,000,000" },
+            { rank: 8, address: "bc1pas...rrg5gqy0cd3q9km54f", percentage: "0.28%", value: "8,676,779,709,918" },
+        ];
+
+        const ECOSYSTEM_LINKS = [
+          { name: 'UniSat', url: 'https://unisat.io', category: 'Marketplace' },
+          { name: 'OKX Web3', url: 'https://web3.okx.com', category: 'Marketplace' },
+          { name: 'Magic Eden', url: 'https://magiceden.io', category: 'Marketplace' },
+          { name: 'XVerse', url: 'https://xverse.app', category: 'Wallet' },
+          { name: 'Hiro Wallet', url: 'https://wallet.hiro.so', category: 'Wallet' },
+          { name: 'Ord.io', url: 'https://ord.io', category: 'Explorer' },
+          { name: 'Ordinal Hub', url: 'https://ordinalshub.com', category: 'Explorer' },
+          { name: 'Twitter (X)', url: 'https://x.com/pi3141s', category: 'Social' },
+          { name: 'Telegram', url: 'https://t.me/brc20picoin', category: 'Social' },
+        ];
+
+        // --- 3. Render Tables & Links ---
+        const holdersTableBody = document.getElementById('holdersTableBody');
+        HOLDERS_DATA.forEach(h => {
+            const row = `<tr class="hover:bg-white/5 transition-colors group border-b border-white/5 last:border-0">
+                <td class="px-6 py-4"><span class="${h.rank <= 3 ? 'text-primary' : 'text-gray-500'} font-bold">${h.rank}</span></td>
+                <td class="px-6 py-4 font-mono text-gray-400 group-hover:text-primary transition-colors">${h.address}</td>
+                <td class="px-6 py-4 text-right text-gray-300">${h.percentage}</td>
+                <td class="px-6 py-4 text-right text-gray-300">${h.value}</td>
+            </tr>`;
+            holdersTableBody.innerHTML += row;
+        });
+
+        const ecosystemGrid = document.getElementById('ecosystemGrid');
+        // Group by category
+        const grouped = ECOSYSTEM_LINKS.reduce((acc, link) => {
+            if (!acc[link.category]) acc[link.category] = [];
+            acc[link.category].push(link);
+            return acc;
+        }, {});
+
+        for (const [category, links] of Object.entries(grouped)) {
+            let linksHtml = links.map(link => `
+                <a href="${link.url}" target="_blank" class="tilt-card flex items-center justify-between p-4 rounded-xl bg-dark-bg/50 border border-dark-border hover:border-primary/50 transition-all duration-200 group">
+                    <span class="font-medium text-gray-300 group-hover:text-white">${link.name}</span>
+                    <i data-lucide="external-link" class="w-4 h-4 text-gray-600 group-hover:text-primary transition-colors"></i>
+                </a>
+            `).join('');
+            
+            ecosystemGrid.innerHTML += `
+                <div class="space-y-4 reveal">
+                    <div class="flex items-center gap-2 mb-2">
+                        <div class="p-1.5 bg-white/5 rounded-md text-primary"><i data-lucide="folder" class="w-4 h-4"></i></div>
+                        <h3 class="text-lg font-bold font-mono text-gray-200 uppercase">${category}s</h3>
+                    </div>
+                    <div class="grid gap-3">${linksHtml}</div>
+                </div>
+            `;
+        }
+        lucide.createIcons(); // Re-run for new elements
+
+        // --- 4. Charts ---
+        // Holders Chart
+        new Chart(document.getElementById('holdersChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Top 10', 'Top 11~50', 'Top 51~100', 'Top 101~500', 'Others'],
+                datasets: [{
+                    data: [7.42, 5.59, 3.58, 14.35, 69.04],
+                    backgroundColor: ['#8b5cf6', '#3b82f6', '#14b8a6', '#84cc16', '#f43f5e'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '75%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#151720',
+                        bodyColor: '#fff',
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        borderWidth: 1,
+                        padding: 10
+                    }
+                }
+            }
+        });
+
+        // Price Chart
+        new Chart(document.getElementById('priceChart'), {
+            type: 'line',
+            data: {
+                labels: ['12/25', '12/28', '1/6', '1/8', '3/21', '3/27', '4/22', '4/26', '8/29', '11/14', '11/20'],
+                datasets: [{
+                    label: 'Price (SATS)',
+                    data: [119, 294, 849, 1848, 27999, 8999, 21500, 20999, 15999, 14899, 22999],
+                    borderColor: '#6c5ce7',
+                    backgroundColor: (context) => {
+                        const ctx = context.chart.ctx;
+                        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                        gradient.addColorStop(0, 'rgba(108, 92, 231, 0.5)');
+                        gradient.addColorStop(1, 'rgba(108, 92, 231, 0)');
+                        return gradient;
+                    },
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#6c5ce7',
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b7280', font: { family: 'monospace' } } },
+                    y: { position: 'right', grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b7280', font: { family: 'monospace' } } }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#151720',
+                        titleColor: '#6b7280',
+                        bodyColor: '#fff',
+                        bodyFont: { weight: 'bold', size: 14 },
+                        borderColor: 'rgba(108,92,231,0.5)',
+                        borderWidth: 1,
+                        displayColors: false,
+                        callbacks: {
+                            label: (context) => `${context.raw.toLocaleString()} SATS`
+                        }
+                    }
+                }
+            }
+        });
+
+        // --- 5. Interactive Background ---
+        const canvas = document.getElementById('bgCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let particles = [];
+        const mouse = { x: 0, y: 0 };
+        const colors = ['#6c5ce7', '#FFD700', '#333333', '#444444', '#ffffff'];
+
+        function initParticles() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            particles = [];
+            const count = Math.floor((width * height) / 15000);
+            for(let i=0; i<count; i++){
+                particles.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: (Math.random() - 0.5) * 0.5,
+                    size: Math.random() * 2 + 1,
+                    color: colors[Math.floor(Math.random() * colors.length)]
+                });
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            
+            // Spotlight
+            const gradient = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 400);
+            gradient.addColorStop(0, 'rgba(108, 92, 231, 0.05)');
+            gradient.addColorStop(1, 'transparent');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+
+            particles.forEach(p => {
+                p.x += p.vx; p.y += p.vy;
+                if(p.x < 0 || p.x > width) p.vx *= -1;
+                if(p.y < 0 || p.y > height) p.vy *= -1;
+
+                const dx = mouse.x - p.x;
+                const dy = mouse.y - p.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                
+                if(dist < 150) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = p.color;
+                    ctx.globalAlpha = (1 - dist/150) * 0.5;
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(mouse.x, mouse.y);
+                    ctx.stroke();
+                }
+
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = 0.8;
+                if(p.color === '#FFD700') {
+                    ctx.shadowColor = '#FFD700'; ctx.shadowBlur = 10;
+                } else {
+                    ctx.shadowBlur = 0;
+                }
+                ctx.fillRect(p.x, p.y, p.size, p.size);
+                ctx.shadowBlur = 0;
+            });
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', initParticles);
+        window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+        initParticles();
+        animate();
+
+        // --- 6. Scroll Reveal ---
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                }
+            });
+        }, { threshold: 0.1 });
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+        // --- 7. Tilt Effect ---
+        document.querySelectorAll('.tilt-card').forEach(card => {
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                const rotateX = ((y - centerY) / centerY) * -5;
+                const rotateY = ((x - centerX) / centerX) * 5;
+                
+                card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0)';
+            });
+        });
+
+        // --- 8. Helper Functions ---
+        function checkBalance(e) {
+            e.preventDefault();
+            const addr = document.getElementById('btcAddress').value.trim();
+            if(addr) window.open(`https://unisat.io/brc20?q=${addr}&tick=𝛑`, '_blank');
+        }
+    </script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
